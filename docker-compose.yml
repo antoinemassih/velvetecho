@@ -9,7 +9,6 @@ services:
     container_name: velvetecho-temporal
     ports:
       - "7233:7233"    # gRPC
-      - "8088:8088"    # Web UI
     environment:
       - DB=postgresql
       - DB_PORT=5432
@@ -19,6 +18,22 @@ services:
       - SKIP_DB_CREATE=false
     depends_on:
       - postgres
+    networks:
+      - velvetecho
+
+  # ============================================================================
+  # Temporal Web UI
+  # ============================================================================
+  temporal-ui:
+    image: temporalio/ui:2.21.3
+    container_name: velvetecho-temporal-ui
+    ports:
+      - "8088:8080"    # Web UI
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    depends_on:
+      - temporal
     networks:
       - velvetecho
 
