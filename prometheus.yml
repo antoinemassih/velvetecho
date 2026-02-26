@@ -1,0 +1,58 @@
+# Prometheus configuration for VelvetEcho
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'velvetecho-local'
+    environment: 'development'
+
+# Scrape configurations
+scrape_configs:
+  # PatientComet API
+  - job_name: 'patientcomet'
+    static_configs:
+      - targets: ['host.docker.internal:9800']
+        labels:
+          service: 'patientcomet'
+          component: 'api'
+
+  # Lobsterclaws API
+  - job_name: 'lobsterclaws'
+    static_configs:
+      - targets: ['host.docker.internal:9720']
+        labels:
+          service: 'lobsterclaws'
+          component: 'api'
+
+  # Temporal (if exposing metrics)
+  - job_name: 'temporal'
+    static_configs:
+      - targets: ['temporal:8088']
+        labels:
+          service: 'temporal'
+          component: 'server'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          component: 'monitoring'
+
+  # Redis exporter (if added)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #       labels:
+  #         service: 'redis'
+  #         component: 'cache'
+
+  # PostgreSQL exporter (if added)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+  #       labels:
+  #         service: 'postgres'
+  #         component: 'database'

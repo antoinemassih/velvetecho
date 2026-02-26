@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Temporal Server (Workflow Orchestration)
+  # ============================================================================
+  temporal:
+    image: temporalio/auto-setup:1.22.4
+    container_name: velvetecho-temporal
+    ports:
+      - "7233:7233"    # gRPC
+      - "8088:8088"    # Web UI
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    depends_on:
+      - postgres
+    networks:
+      - velvetecho
+
+  # ============================================================================
+  # PostgreSQL (Database)
+  # ============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: velvetecho-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=velvetecho
+      - POSTGRES_DB=velvetecho
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - velvetecho
+
+  # ============================================================================
+  # Redis (Cache & Queue)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: velvetecho-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - velvetecho
+
+  # ============================================================================
+  # Prometheus (Metrics)
+  # ============================================================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: velvetecho-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - velvetecho
+
+  # ============================================================================
+  # Jaeger (Distributed Tracing)
+  # ============================================================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: velvetecho-jaeger
+    ports:
+      - "5775:5775/udp"   # Zipkin thrift
+      - "6831:6831/udp"   # Jaeger thrift agent
+      - "6832:6832/udp"   # Jaeger thrift collector
+      - "5778:5778"       # Jaeger HTTP agent
+      - "16686:16686"     # Jaeger UI
+      - "14268:14268"     # Jaeger HTTP collector
+      - "14250:14250"     # Jaeger gRPC
+      - "9411:9411"       # Zipkin HTTP
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - velvetecho
+
+  # ============================================================================
+  # Grafana (Dashboards) - Optional
+  # ============================================================================
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: velvetecho-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - velvetecho
+
+networks:
+  velvetecho:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
