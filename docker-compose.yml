@@ -13,10 +13,10 @@ services:
     environment:
       - DB=postgresql
       - DB_PORT=5432
-      - POSTGRES_USER=temporal
-      - POSTGRES_PWD=temporal
+      - POSTGRES_USER=velvetecho
+      - POSTGRES_PWD=password
       - POSTGRES_SEEDS=postgres
-      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - SKIP_DB_CREATE=false
     depends_on:
       - postgres
     networks:

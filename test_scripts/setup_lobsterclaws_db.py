@@ -10,7 +10,8 @@ from sqlalchemy.orm import sessionmaker
 
 # Import models from the integration example
 import sys
-sys.path.insert(0, "../examples")
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../examples"))
 
 try:
     from lobsterclaws_full_integration import (
@@ -20,8 +21,8 @@ try:
         BaseModel,
         AgentCategory,
     )
-except ImportError:
-    print("Error: Could not import models from lobsterclaws_full_integration.py")
+except ImportError as e:
+    print(f"Error: Could not import models from lobsterclaws_full_integration.py: {e}")
     print("Make sure you're running from the VelvetEcho directory")
     sys.exit(1)
 
