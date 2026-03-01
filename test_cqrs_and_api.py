@@ -84,40 +84,35 @@ class UserResponse(PydanticBase):
 class CreateUserCommand(Command):
     """Command to create user"""
 
-    def __init__(self, name: str, email: str, role: str = "user"):
-        self.name = name
-        self.email = email
-        self.role = role
+    name: str
+    email: str
+    role: str = "user"
 
 
 class UpdateUserCommand(Command):
     """Command to update user"""
 
-    def __init__(self, user_id: UUID, name: Optional[str] = None, email: Optional[str] = None):
-        self.user_id = user_id
-        self.name = name
-        self.email = email
+    user_id: UUID
+    name: Optional[str] = None
+    email: Optional[str] = None
 
 
 class DeleteUserCommand(Command):
     """Command to delete user"""
 
-    def __init__(self, user_id: UUID):
-        self.user_id = user_id
+    user_id: UUID
 
 
 class GetUserQuery(Query):
     """Query to get user by ID"""
 
-    def __init__(self, user_id: UUID):
-        self.user_id = user_id
+    user_id: UUID
 
 
 class ListUsersQuery(Query):
     """Query to list users"""
 
-    def __init__(self, role: Optional[str] = None):
-        self.role = role
+    role: Optional[str] = None
 
 
 # ============================================================================
@@ -386,7 +381,7 @@ class TestQueryBus:
             pass
 
         with pytest.raises(ValueError, match="No handler registered"):
-            await bus_dispatch(UnregisteredQuery())
+            await bus.dispatch(UnregisteredQuery())
 
     @pytest.mark.asyncio
     async def test_concurrent_query_dispatch(self, query_bus, repository, session):
@@ -419,7 +414,12 @@ def app(engine):
     async def get_test_session():
         async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         async with async_session() as session:
-            yield session
+            try:
+                yield session
+                await session.commit()  # Commit after each request
+            except Exception:
+                await session.rollback()
+                raise
 
     # Create CRUD router
     crud_router = CRUDRouter(
