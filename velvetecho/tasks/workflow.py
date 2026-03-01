@@ -2,7 +2,7 @@
 
 import functools
 from typing import Any, Callable, ParamSpec, TypeVar, Optional
-from temporalio import workflow
+from temporalio import workflow as temporal_workflow
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -68,7 +68,7 @@ def workflow(
 
     def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         # Apply Temporal's workflow decorator
-        temporal_workflow = workflow.defn(name=name or fn.__name__)(fn)
+        decorated_workflow = temporal_workflow.defn(name=name or fn.__name__)(fn)
 
         # Store config as metadata
         config = WorkflowConfig(
@@ -78,15 +78,15 @@ def workflow(
             task_timeout=task_timeout,
             retry_policy=retry_policy,
         )
-        temporal_workflow._velvetecho_config = config  # type: ignore
+        decorated_workflow._velvetecho_config = config  # type: ignore
 
         # Add convenience methods
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            return await temporal_workflow(*args, **kwargs)
+            return await decorated_workflow(*args, **kwargs)
 
         # Copy metadata
-        wrapper._temporal_workflow = temporal_workflow  # type: ignore
+        wrapper._temporal_workflow = decorated_workflow  # type: ignore
         wrapper._velvetecho_config = config  # type: ignore
 
         return wrapper  # type: ignore
@@ -98,21 +98,21 @@ def workflow(
 
 
 # Workflow utilities
-def get_workflow_info() -> workflow.Info:
+def get_workflow_info() -> temporal_workflow.Info:
     """Get information about the current workflow execution"""
-    return workflow.info()
+    return temporal_workflow.info()
 
 
 def is_replaying() -> bool:
     """Check if the current workflow execution is replaying"""
-    return workflow.unsafe.is_replaying()
+    return temporal_workflow.unsafe.is_replaying()
 
 
 async def sleep(seconds: float) -> None:
     """Sleep within a workflow (durable, survives restarts)"""
-    await workflow.sleep(seconds)
+    await temporal_workflow.sleep(seconds)
 
 
 def now() -> Any:
     """Get current time within workflow (deterministic)"""
-    return workflow.now()
+    return temporal_workflow.now()

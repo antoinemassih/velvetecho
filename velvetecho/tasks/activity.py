@@ -2,7 +2,7 @@
 
 import functools
 from typing import Any, Callable, ParamSpec, TypeVar, Optional
-from temporalio import activity
+from temporalio import activity as temporal_activity
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -65,7 +65,7 @@ def activity(
 
     def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         # Apply Temporal's activity decorator
-        temporal_activity = activity.defn(name=name or fn.__name__)(fn)
+        decorated_activity = temporal_activity.defn(name=name or fn.__name__)(fn)
 
         # Store config as metadata
         config = ActivityConfig(
@@ -75,15 +75,15 @@ def activity(
             heartbeat_timeout=heartbeat_timeout,
             retry_policy=retry_policy,
         )
-        temporal_activity._velvetecho_config = config  # type: ignore
+        decorated_activity._velvetecho_config = config  # type: ignore
 
         # Add convenience wrapper
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            return await temporal_activity(*args, **kwargs)
+            return await decorated_activity(*args, **kwargs)
 
         # Copy metadata
-        wrapper._temporal_activity = temporal_activity  # type: ignore
+        wrapper._temporal_activity = decorated_activity  # type: ignore
         wrapper._velvetecho_config = config  # type: ignore
 
         return wrapper  # type: ignore
@@ -95,20 +95,20 @@ def activity(
 
 
 # Activity utilities
-def get_activity_info() -> activity.Info:
+def get_activity_info() -> temporal_activity.Info:
     """Get information about the current activity execution"""
-    return activity.info()
+    return temporal_activity.info()
 
 
 def heartbeat(*details: Any) -> None:
     """Send heartbeat from within an activity (prevents timeout)"""
-    activity.heartbeat(*details)
+    temporal_activity.heartbeat(*details)
 
 
 def is_cancelled() -> bool:
     """Check if the current activity has been cancelled"""
     try:
-        activity.info()
+        temporal_activity.info()
         return False
     except Exception:
         return True
